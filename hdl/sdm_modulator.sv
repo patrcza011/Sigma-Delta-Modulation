@@ -7,6 +7,10 @@ module sdm_modulator #(
     output logic              dout
 );
 
+    initial begin
+        $dumpfile("sdm_modulator.vcd");
+        $dumpvars(1,sdm_modulator); // Here 1 means dump signals on the design level, 0 means dump all signals below (kinda recursive)
+    end
     localparam int bw_ext = 2;
     localparam int bw_tot = dac_bw + bw_ext;
 

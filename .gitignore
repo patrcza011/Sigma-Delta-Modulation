@@ -1,0 +1,9 @@
+# Ignore dirs generated during simulation
+sim_build/
+__pycache__/
+# Ignore files:
+*.xml
+# Open waves file:
+*.vcd
+# Questasim waves file:
+*.wlf
