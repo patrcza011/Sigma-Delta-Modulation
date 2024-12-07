@@ -2,10 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import resample
 from scipy.signal import firwin, lfilter, decimate
-import sys  
-  
-sys.setrecursionlimit(10000000) 
+import sys
+import os
 
+parent_path = os.path.abspath(os.path.join(os.path.dirname(__file__),".."))
+if parent_path not in sys.path:
+    sys.path.append(parent_path)
+
+sys.setrecursionlimit(10000000)
 
 def sigma_delta_modulator(input_signal, index=0, integrator=0, output_signal=None):
     """
@@ -32,7 +36,6 @@ def sigma_delta_modulator(input_signal, index=0, integrator=0, output_signal=Non
 
     # Append the quantized value to the output
     output_signal.append(quantizer)
-
     return sigma_delta_modulator(input_signal, index + 1, integrator, output_signal)
 
 def convert_audio_to_sdm(audio_data, sample_rate, target_rate):
@@ -96,46 +99,47 @@ def sigma_delta_demodulator_fir(sdm_signal, target_rate, sample_rate, num_taps=6
 
     return demodulated_signal
 
-# Generate a test 16-bit sine wave audio signal at 44.1 kHz
-duration = 1.0  # 1 second
-sample_rate = 44100  # 44.1 kHz
-target_rate = 2822400  # 2.8224 MHz
-t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
-frequency = 100
-audio_data = (0.9 * np.sin(2 * np.pi * frequency * t) * 32767).astype(np.int16)
+if __name__ == "__main__":
+    # Generate a test 16-bit sine wave audio signal at 44.1 kHz
+    duration = 1.0  # 1 second
+    sample_rate = 44100  # 44.1 kHz
+    target_rate = 2822400  # 2.8224 MHz
+    t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
+    frequency = 100
+    audio_data = (0.9 * np.sin(2 * np.pi * frequency * t) * 32767).astype(np.int16)
+    print("Audio_data len: ", len(audio_data))
+    # Convert the audio to Sigma-Delta Modulated Signal
+    sdm_signal = convert_audio_to_sdm(audio_data, sample_rate, target_rate)
 
-# Convert the audio to Sigma-Delta Modulated Signal
-sdm_signal = convert_audio_to_sdm(audio_data, sample_rate, target_rate)
+    demodulated_audio_fir = sigma_delta_demodulator_fir(sdm_signal, target_rate, sample_rate)
 
-demodulated_audio_fir = sigma_delta_demodulator_fir(sdm_signal, target_rate, sample_rate)
+    # Plot the results
+    plt.figure(figsize=(12, 9))
 
-# Plot the results
-plt.figure(figsize=(12, 9))
+    # Plot original audio signal
+    plt.subplot(3, 1, 1)
+    plt.plot(t[:1000], audio_data[:1000], label="Original Audio Signal")
+    plt.title("Original Audio Signal (44.1 kHz)")
+    plt.grid(True)
+    plt.legend()
 
-# Plot original audio signal
-plt.subplot(3, 1, 1)
-plt.plot(t[:1000], audio_data[:1000], label="Original Audio Signal")
-plt.title("Original Audio Signal (44.1 kHz)")
-plt.grid(True)
-plt.legend()
+    # Plot Sigma-Delta Modulated Signal
+    oversampled_t = np.linspace(0, duration, len(sdm_signal), endpoint=False)
+    plt.subplot(3, 1, 2)
+    plt.step(oversampled_t[:64000], sdm_signal[:64000], label="Sigma-Delta Modulated Signal", where="mid")
+    plt.title("Sigma-Delta Modulated Signal (2.8224 MHz)")
+    plt.grid(True)
+    plt.legend()
 
-# Plot Sigma-Delta Modulated Signal
-oversampled_t = np.linspace(0, duration, len(sdm_signal), endpoint=False)
-plt.subplot(3, 1, 2)
-plt.step(oversampled_t[:64000], sdm_signal[:64000], label="Sigma-Delta Modulated Signal", where="mid")
-plt.title("Sigma-Delta Modulated Signal (2.8224 MHz)")
-plt.grid(True)
-plt.legend()
+    # Plot demodulated audio signal
+    demodulated_t = np.linspace(0, duration, len(demodulated_audio_fir), endpoint=False)
+    plt.subplot(3, 1, 3)
+    plt.plot(demodulated_t[:1000], demodulated_audio_fir[:1000], label="Demodulated Audio Signal (FIR, 16-bit)")
+    plt.title("Demodulated Audio Signal (44.1 kHz) Using FIR")
+    plt.grid(True)
+    plt.legend()
 
-# Plot demodulated audio signal
-demodulated_t = np.linspace(0, duration, len(demodulated_audio_fir), endpoint=False)
-plt.subplot(3, 1, 3)
-plt.plot(demodulated_t[:1000], demodulated_audio_fir[:1000], label="Demodulated Audio Signal (FIR, 16-bit)")
-plt.title("Demodulated Audio Signal (44.1 kHz) Using FIR")
-plt.grid(True)
-plt.legend()
-
-# Adjust layout
-plt.tight_layout()
-plt.show()
+    # Adjust layout
+    plt.tight_layout()
+    plt.show()
 
