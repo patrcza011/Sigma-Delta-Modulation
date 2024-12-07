@@ -11,6 +11,8 @@ module sdm_modulator_tb;
     // Inputs and Outputs
     logic [15:0] din;
     logic dout;
+    logic valid_in;
+    logic valid_out;
 
     // Clock generation: 2.8224 MHz
     initial begin
@@ -24,24 +26,37 @@ module sdm_modulator_tb;
         #500 rst_n = 1; // Release reset after 500 ns
     end
 
-    // Input stimulus
+    // Input stimulus: Single transaction with -16384
     initial begin
-        // Set input to -16384 (two's complement representation)
-        din = -16'sd16384;
+        // Initial values
+        din = 16'sd0;
+        valid_in = 1'b0;
+
+        // Wait for reset deassertion
+        @(posedge rst_n);
+
+        // Perform a single transaction
+        #1000 valid_in = 1'b1; // Assert valid_in
+        din = -16'sd16384;     // Set input to -16384
+
+        // Finish simulation after observing results
+        #5000 $finish;
     end
 
     // Instantiate the DUT
     sdm_modulator dut (
         .clk(clk),
         .rst_n(rst_n),
+        .valid_in(valid_in),
         .din(din),
+        .valid_out(valid_out),
         .dout(dout)
     );
 
     // Monitor
     initial begin
-        $monitor("Time: %0t ns | Reset: %b | Din: %d | Dout: %b", $time, rst_n, din, dout);
-        #500000 $finish; // Run simulation for 5000 ns
+        $monitor("Time: %0t ns | Reset: %b | Valid_In: %b | Din: %d | Valid_Out: %b | Dout: %b", 
+                 $time, rst_n, valid_in, din, valid_out, dout);
     end
 
 endmodule

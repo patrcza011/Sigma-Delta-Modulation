@@ -3,14 +3,12 @@ module sdm_modulator #(
 )(
     input  logic              clk,
     input  logic              rst_n,
+    input  logic              valid_in,   // New valid input signal
     input  logic [15 : 0]     din,
+    output logic              valid_out,  // New valid output signal
     output logic              dout
 );
 
-    initial begin
-        $dumpfile("sdm_modulator.vcd");
-        $dumpvars(1,sdm_modulator); // Here 1 means dump signals on the design level, 0 means dump all signals below (kinda recursive)
-    end
     localparam int bw_ext = 2;
     localparam int bw_tot = dac_bw + bw_ext;
 
@@ -45,7 +43,7 @@ module sdm_modulator #(
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             DAC_acc_1st <= '0;
-        end else begin
+        end else if (valid_in) begin // Process only when input is valid
             DAC_acc_1st <= delta_s0_c1;
         end
     end
@@ -53,11 +51,15 @@ module sdm_modulator #(
     // Update output logic
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            dout_r   <= 1'b0;
-            dac_dout <= 1'b0;
+            dout_r     <= 1'b0;
+            dac_dout   <= 1'b0;
+            valid_out  <= 1'b0;
+        end else if (valid_in) begin // Update output only when input is valid
+            dout_r     <= delta_s0_c1[bw_tot-1];
+            dac_dout   <= ~dout_r;
+            valid_out  <= 1'b1; // Mark output as valid
         end else begin
-            dout_r   <= delta_s0_c1[bw_tot-1];
-            dac_dout <= ~dout_r;
+            valid_out  <= 1'b0; // Output not valid when input is not valid
         end
     end
 
