@@ -37,7 +37,7 @@ module top (
         .dout(sdm_out2)
     );
 
-	sdm_modulator adc1 (
+	sdm_demodulator adc1 (
         .clk(clk),
         .rst_n(rst_n),
         .valid_in(valid_in_adc1),
@@ -46,7 +46,7 @@ module top (
         .dout(audio_out1)
     );
 
-	sdm_modulator adc2 (
+	sdm_demodulator adc2 (
         .clk(clk),
         .rst_n(rst_n),
         .valid_in(valid_in_adc2),

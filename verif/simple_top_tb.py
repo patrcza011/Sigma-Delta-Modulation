@@ -27,7 +27,7 @@ async def base_test(top):
     sdm_signal_from_design = []
     # Python model
     sdm_signal = convert_audio_to_sdm(audio_data, sample_rate, target_rate)
-    #demodulated_audio_fir = sigma_delta_demodulator_fir(sdm_signal, target_rate, sample_rate)
+    demodulated_audio_fir = sigma_delta_demodulator_fir(sdm_signal, target_rate, sample_rate)
     with open("sdm_signal_from_model.txt", "w") as file:
         for val in sdm_signal:
             file.write(f"{val}\n")
@@ -40,10 +40,10 @@ async def base_test(top):
     await Timer(500, units='ns')
     top.rst_n.value = 1
     top.valid_in_dac1.value = 1
-    print(f"type: {type(-16384)}")
-    for val in audio_data:
-        top.audio_in1.value = int(val)
-        await RisingEdge(top.clk)
+    #print(f"type: {type(-16384)}")
+    #for val in audio_data:
+    #    top.audio_in1.value = int(val)
+    #    await RisingEdge(top.clk)
     #top.audio_in1.value = -16384
     #await RisingEdge(top.sdm_out1)
     #for _ in range(len(sdm_signal)):
@@ -55,3 +55,30 @@ async def base_test(top):
     #        file.write(f"{val}\n")
 
     #await Timer(45000, units='ns')
+
+    # Function to write data from the DUT
+    async def write_data():
+        for val in audio_data:
+            top.audio_in1.value = int(val)
+            await RisingEdge(top.clk)
+            await Timer(10, units="ns")  # Small delay between writes
+
+    # Function to read data from the DUT
+    async def read_data():
+        await RisingEdge(top.sdm_out1)
+        for _ in range(len(sdm_signal)):
+            await RisingEdge(top.clk)
+            sdm_signal_from_design.append(top.sdm_out1)
+            await Timer(10, units="ns")  # Small delay between reads
+
+    # Perform write and read operations simultaneously
+    write_task = cocotb.start_soon(write_data())
+    read_task = cocotb.start_soon(read_data())
+
+    # Wait for both tasks to complete
+    await write_task
+    await read_task
+
+    with open("sdm_signal_from_design.txt", "w") as file:
+        for val in sdm_signal_from_design:
+            file.write(f"{val}\n")
