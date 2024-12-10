@@ -34,14 +34,20 @@ module sdm_demodulator_tb;
         rst_n = 1;  // Release reset
     end
 
-    // Generate 25% duty cycle square wave
+    // Generate 1 clock cycle high, 3 clock cycles low
     initial begin
         valid_in = 1;
         forever begin
-            din = 1;  // High for 25% of the period
-            #88.65;   // 25% of 354.6 ns
-            din = 0;  // Low for 75% of the period
-            #265.95;  // 75% of 354.6 ns
+            din = 1;  // High for 1 clock cycle
+            @(posedge clk); // Wait for 1 clock cycle
+            din = 0;  // Low for 3 clock cycles
+            @(posedge clk); // Wait for 3 clock cycles
+            @(posedge clk);
+            @(posedge clk);
+				@(posedge clk);
+				@(posedge clk);
+				@(posedge clk);
+				@(posedge clk);
         end
     end
 
@@ -52,8 +58,9 @@ module sdm_demodulator_tb;
 
     // End simulation after some time
     initial begin
-        #5000000;  // Run simulation for 50,000 ns (50 us)
+        #500000;  // Run simulation for 50,000 ns (50 µs)
         $finish;
     end
 
 endmodule
+
