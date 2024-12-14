@@ -1,5 +1,7 @@
+
 module top (
     input  logic              		clk,
+    input logic dummy_clk,
     input  logic              		rst_n,
     input  logic              		valid_in_dac1,  //Audio to SDM
 	input  logic              		valid_in_dac2,  //Audio to SDM

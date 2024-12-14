@@ -12,7 +12,7 @@ TOPLEVEL_LANG ?= verilog
 VERILOG_SOURCES += $(PWD)/$(DESIGN_DIR)/sdm_modulator.sv
 VERILOG_SOURCES += $(PWD)/$(DESIGN_DIR)/filter.sv
 VERILOG_SOURCES += $(PWD)/$(DESIGN_DIR)/sdm_demodulator.sv
-VERILOG_SOURCES += $(PWD)/$(DESIGN_DIR)/downsample.sv
+#VERILOG_SOURCES += $(PWD)/$(DESIGN_DIR)/downsample.sv
 VERILOG_SOURCES += $(PWD)/$(DESIGN_DIR)/top.sv
 
 # TOPLEVEL is the name of the toplevel module in your Verilog or VHDL file
