@@ -29,6 +29,7 @@ class SDM_transaction:
     def __init__(self, data=[], valid=0):
         self.data = data
         self.valid = valid
+
     def __str__(self):
         return f"data: {self.data}, valid: {self.valid}"
 
@@ -40,8 +41,8 @@ class SDM_driver(Driver):
         self.valid_in = valid_in
     
     async def _driver_send(self, sdm_transaction, sync=False):
-        self.valid_in.value = sdm_transaction.valid
-        for val in sdm_transaction.data:
+        self.valid_in.value = 1#sdm_transaction.valid
+        for val in sdm_transaction:
             self.data_in.value = int(val)
             await RisingEdge(self.clk)
 
@@ -58,8 +59,9 @@ class SDM_reset_driver(Driver):
         await RisingEdge(self.clk)
 
 class SDM_monitor(Monitor):
-    def __init__(self, clk, data_out, valid_out, num_of_probes, callback=None, event=None):
+    def __init__(self, clk, name, data_out, valid_out, num_of_probes, callback=None, event=None):
         self.clk = clk
+        self.name = name
         self.data_out = data_out
         self.valid_out = valid_out
         self.num_of_probes = num_of_probes
@@ -72,9 +74,13 @@ class SDM_monitor(Monitor):
         for _ in range(self.num_of_probes):
             await RisingEdge(self.clk)
             self.temp_list_of_probes.append(self.data_out.value)
+            self._recv(int(self.data_out.value))
         self.trans.data = self.temp_list_of_probes
         self.trans.valid = self.valid_out
-        self._recv(self.trans)
+        print(f"[Monitor] trans: {self.temp_list_of_probes}")
+
+#class SDM_scoreboard(Scoreboard):
+#    def compare(self, got, exp, log, strict_type=True)
 
 class SDM_model_wrapper():
     def __init__(self,duration, sample_rate=44100, target_rate=2822400, frequency=100):
@@ -108,16 +114,17 @@ async def functionality(top):
     model = SDM_model_wrapper(duration2)
     #print(f"model_data: {model.sdm_signal}")
 
-    test = SDM_transaction(model.audio_data, valid=1)
+    #test = SDM_transaction(model.audio_data, valid=1)
     #print(test)
     cocotb.start_soon(Clock(top.clk, 354.6, units='ns').start())
     cocotb.start_soon(Clock(top.dummy_clk, 22675.73, units='ns').start())
 
     rst_drv = SDM_reset_driver(top.clk, top.rst_n)
     drv = SDM_driver(top.dummy_clk, top.audio_in1, top.valid_in_dac1)
-    mon = SDM_monitor(top.clk, top.sdm_out1, top.valid_out_dac1, num_of_probes=len(model.sdm_signal), callback=None)
-    scb = Scoreboard(top)
-    scb.add_interface(mon, model.sdm_signal, reorder_depth=len(model.sdm_signal))
+    mon = SDM_monitor(top.clk, "mon", top.sdm_out1, top.valid_out_dac1, num_of_probes=len(model.sdm_signal), callback=None)
+    scb = Scoreboard(top, reorder_depth=0,  fail_immediately=False)
+    print(f"sdm_signal type: {type(model.sdm_signal)}")
+    scb.add_interface(mon, model.sdm_signal, reorder_depth=0)
 
     #top.rst_n.value = 0
     #await Timer(500, units='ns')
@@ -125,7 +132,8 @@ async def functionality(top):
     #await RisingEdge(top.clk)
     #top.valid_in_dac1.value = 1
     await rst_drv.send(500)
-    await drv.send(test)
+    await drv.send(model.audio_data)
+    await mon.wait_for_recv()
     print(f"mon: {mon.trans}")
     
     ## Plot the results
