@@ -32,7 +32,7 @@ def sigma_delta_modulator(input_signal, index=0, integrator=0, output_signal=Non
 
     # Integrator: accumulate the difference
     quantizer = 1 if integrator > 0 else 0  # Quantizer outputs 0 or 1
-    integrator += input_signal[index] - (1 if quantizer == 1 else 0)
+    integrator += input_signal[index] - (32768 if quantizer == 1 else -32768)
 
     # Append the quantized value to the output
     output_signal.append(quantizer)
@@ -50,19 +50,29 @@ def convert_audio_to_sdm(audio_data, sample_rate, target_rate):
     Returns:
         array: Sigma-Delta modulated signal (0 or 1) at target rate.
     """
+    print(f"sample_rate: {sample_rate}, target_rate: {target_rate}")
     # Normalize audio data to [0, 1]
-    audio_data = audio_data / np.max(np.abs(audio_data))  # Normalize to [-1, 1]
-    audio_data = (audio_data + 1) / 2  # Shift to [0, 1]
+    #print(f"max: {np.max(np.abs(audio_data))}")
+    #audio_data = audio_data / 32768 #np.max(np.abs(audio_data))  # Normalize to [-1, 1]
+    #audio_data = (audio_data + 1) / 2  # Shift to [0, 1]
+    print(f"Adudio data len: {len(audio_data)}")
 
     # Calculate the oversampling factor
-    oversampling_factor = target_rate // sample_rate
+    oversampling_factor = 64#target_rate // sample_rate
+    print(f"oversampling_factor: {oversampling_factor}")
 
     # Oversample the input signal
-    oversampled_audio = resample(audio_data, len(audio_data) * oversampling_factor)
+    oversampled_audio = [int(x) for x in audio_data for _ in range(oversampling_factor)] #lst = [(j, k) for j in s1 for k in s2]
+    print(f"oversampled: {oversampled_audio}")
+    #oversampled_audio = resample(audio_data, len(audio_data) * oversampling_factor)
 
     # Apply Sigma-Delta Modulation
     sdm_signal = sigma_delta_modulator(oversampled_audio)
-
+    
+    # Decimate the SDM signal to reduce the number of samples
+    #decimation_factor = 64
+    #decimated_sdm_signal = sdm_signal[::decimation_factor]
+    #return decimated_sdm_signal
     return sdm_signal
 
 def sigma_delta_demodulator_fir(sdm_signal, target_rate, sample_rate, num_taps=64):
@@ -101,17 +111,42 @@ def sigma_delta_demodulator_fir(sdm_signal, target_rate, sample_rate, num_taps=6
 
 if __name__ == "__main__":
     # Generate a test 16-bit sine wave audio signal at 44.1 kHz
-    duration = 1.0  # 1 second
-    sample_rate = 44100  # 44.1 kHz
-    target_rate = 2822400  # 2.8224 MHz
-    t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
-    frequency = 100
-    audio_data = (0.9 * np.sin(2 * np.pi * frequency * t) * 32767).astype(np.int16)
-    print("Audio_data len: ", len(audio_data))
+    #duration = 1.0  # 1 second
+    #sample_rate = 44100  # 44.1 kHz
+    #target_rate = 2822400  # 2.8224 MHz
+    #t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
+    #frequency = 100
+    #audio_data = (0.9 * np.sin(2 * np.pi * frequency * t) * 32767).astype(np.int16)
+    #print("Audio_data len: ", len(audio_data))
     # Convert the audio to Sigma-Delta Modulated Signal
-    sdm_signal = convert_audio_to_sdm(audio_data, sample_rate, target_rate)
+    
+    # TEMP #############
 
-    demodulated_audio_fir = sigma_delta_demodulator_fir(sdm_signal, target_rate, sample_rate)
+    periods=5
+    samples_per_period=5
+    target_rate=2822400
+    frequency=100
+
+    # Calculate the duration for 5 periods
+    duration = periods / frequency
+    
+    # Total number of samples
+    total_samples = periods * samples_per_period
+    
+    # Time array with 5 samples per period
+    t = np.linspace(0, duration, int(total_samples), endpoint=False)
+    print(f"t: {t}, len: {len(t)}")
+    
+    # Generate sine wave with the desired properties
+    audio_data = (0.9 * np.sin(2 * np.pi * frequency * t) * 32767).astype(dtype='int16')
+    print(f"audio_data: {audio_data}, len: {len(audio_data)}")
+    # Convert to SDM signal
+    sdm_signal = convert_audio_to_sdm(audio_data, total_samples, target_rate)
+    
+    
+    #sdm_signal = convert_audio_to_sdm(audio_data, sample_rate, target_rate)
+
+    #demodulated_audio_fir = sigma_delta_demodulator_fir(sdm_signal, target_rate, sample_rate)
 
     # Plot the results
     plt.figure(figsize=(12, 9))
@@ -131,13 +166,13 @@ if __name__ == "__main__":
     plt.grid(True)
     plt.legend()
 
-    # Plot demodulated audio signal
-    demodulated_t = np.linspace(0, duration, len(demodulated_audio_fir), endpoint=False)
-    plt.subplot(3, 1, 3)
-    plt.plot(demodulated_t[:1000], demodulated_audio_fir[:1000], label="Demodulated Audio Signal (FIR, 16-bit)")
-    plt.title("Demodulated Audio Signal (44.1 kHz) Using FIR")
-    plt.grid(True)
-    plt.legend()
+    ## Plot demodulated audio signal
+    #demodulated_t = np.linspace(0, duration, len(demodulated_audio_fir), endpoint=False)
+    #plt.subplot(3, 1, 3)
+    #plt.plot(demodulated_t[:1000], demodulated_audio_fir[:1000], label="Demodulated Audio Signal (FIR, 16-bit)")
+    #plt.title("Demodulated Audio Signal (44.1 kHz) Using FIR")
+    #plt.grid(True)
+    #plt.legend()
 
     # Adjust layout
     plt.tight_layout()
