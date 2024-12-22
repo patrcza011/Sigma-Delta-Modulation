@@ -25,7 +25,6 @@ if parent_path not in sys.path:
 from model.SDM import convert_audio_to_sdm, sigma_delta_demodulator_fir
 # Misc
 sys.setrecursionlimit(10000000)
-# TODO: Przerobic TRANSAKCJE NA LISTY ZAMIAST PROBEK
 # TODO: SIGMA DELtA DRUGIEgo RZEDU 
 
 class SDM_transaction:
@@ -79,13 +78,9 @@ class SDM_monitor(Monitor):
             await ReadOnly()
             for _ in range(self.num_of_probes):
                 await ReadOnly()
-                self.temp_list_of_probes.append(self.data_out.value)
+                self.temp_list_of_probes.append(int(self.data_out.value))
                 await RisingEdge(self.clk)
-                self._recv(int(self.data_out.value))
-        #await ReadOnly()
-        #self.trans.data = self.temp_list_of_probes
-        #self.trans.valid = self.valid_out
-        #print(f"[Monitor] trans: {self.temp_list_of_probes}")
+            self._recv(self.temp_list_of_probes)
 
 
 class SDM_scoreboard(Scoreboard):
@@ -93,52 +88,42 @@ class SDM_scoreboard(Scoreboard):
         super().__init__(dut, reorder_depth, fail_immediately)
         self.val_got = []
         self.val_exp = []
-        self.difference_counter = 0
     
     def compare(self, got, exp, log, strict_type=False):
-        # TODO: ZMINEIC NA FILTRACJE I ROZNCICE SYGNALOW
-        #with open("compare_debug.txt", "a") as file:
-        #    file.write(f"got: {got}, exp: {exp} \n")
-        self.val_got.append(got)
-        self.val_exp.append(exp)
-        #if(got != exp):
-        #    self.difference_counter += 1
-        #    self.errors += 1
-        #    #log.error(f"Received value mdifferent than expected! Expected: {exp}, Received: {got}")
-        #    return False
-        #return True
+        self.val_got = got
+        self.val_exp = exp
+        self.averaged_got = np.convolve(self.val_got, np.ones(256)/256, mode='valid') * 2 - 1
+        self.averaged_exp = np.convolve(self.val_exp, np.ones(256)/256, mode='valid') * 2 - 1
+        if np.average(np.abs(self.averaged_exp - self.averaged_got)) >= 0.1:
+            return False
+        return True
 
     def report(self, input_data):
-        self.log.info(f"Number of differences counted: {self.difference_counter}")
+        self.log.debug(f"Len got: {len(self.val_got)}, got: {self.val_got}, type: {type(self.val_got)}; Len exp: {len(self.val_exp)}, exp: {self.val_exp}, type: {type(self.val_exp)}")
         num_of_elements = np.arange(len(self.val_got))
         num_of_elements_input = np.arange(len(input_data))
         int_input = list(map(int, input_data))
         
-        averaged_got = np.convolve(self.val_got, np.ones(256)/256, mode='valid') * 2 - 1
-        averaged_exp = np.convolve(self.val_exp, np.ones(256)/256, mode='valid') * 2 - 1
-        num_of_elements_avg = np.arange(len(averaged_got))
+        num_of_elements_avg = np.arange(len(self.averaged_got))
 
 
-        fig, axs = plt.subplots(2,3)
+        fig, axs = plt.subplots(2,3) # Two rows and three cols
         axs[0, 0].plot(num_of_elements, self.val_got, color='r', label='dut', alpha=0.7, linestyle='-')
         axs[0, 0].set_title('DUT')
         axs[1, 0].plot(num_of_elements, self.val_exp, color='b', label='model', alpha=0.7, linestyle='-')
         axs[1, 0].set_title('Model')
-        #plt.show()
-        #fig2, axs2 = plt.subplots(2,2)
+
         axs[0, 1].plot(num_of_elements_input, input_data, color='b', label='model', alpha=0.7, linestyle='-')
         axs[0, 1].set_title('input dut')
         axs[1, 1].plot(num_of_elements_input, int_input, color='b', label='model', alpha=0.7, linestyle='-')
         axs[1, 1].set_title('input model')
 
-        axs[0, 2].plot(num_of_elements_avg, averaged_got, color='b', label='model', alpha=0.7, linestyle='-')
+        axs[0, 2].plot(num_of_elements_avg, self.averaged_got, color='b', label='model', alpha=0.7, linestyle='-')
         axs[0, 2].set_title('avg filtered dut')
-        axs[1, 2].plot(num_of_elements_avg, averaged_exp, color='b', label='model', alpha=0.7, linestyle='-')
+        axs[1, 2].plot(num_of_elements_avg, self.averaged_exp, color='b', label='model', alpha=0.7, linestyle='-')
         axs[1, 2].set_title('avg filtered model')
         plt.show()
-        print(f"Test sub: {np.average(np.abs(averaged_exp - averaged_got))}")
-        if(self.errors):
-            assert False
+        
 
 class SDM_model_wrapper():
     def __init__(self, periods=2, samples_per_period=20, target_rate=2822400, frequency=1):
@@ -157,29 +142,15 @@ class SDM_model_wrapper():
         
         # Time array with 5 samples per period
         self.time = np.linspace(0, self.duration, int(self.total_samples), endpoint=False)
-        print(f"time: {self.time}, len: {len(self.time)}")
+        self.log.debug(f"time: {self.time}, len: {len(self.time)}")
         
         # Generate sine wave with the desired properties
         #self.audio_data = (0.9 * np.sin(2 * np.pi * self.frequency * self.time) * 32767).astype(dtype='int16')
         
         self.audio_data = (0.5 * np.sin(2 * np.pi * self.frequency * self.time) * 32767).astype(dtype='int16')
-        print(f"audio_data: {self.audio_data}, len: {len(self.audio_data)}")
+        self.log.debug(f"audio_data: {self.audio_data}, len: {len(self.audio_data)}")
         # Convert to SDM signal
         self.sdm_signal = convert_audio_to_sdm(self.audio_data, self.total_samples, self.target_rate)
-        #self.time = np.linspace(0, self.duration, int(self.sample_rate * self.duration), endpoint=False)
-        #self.audio_data = (0.9 * np.sin(2 * np.pi * self.frequency * self.time) * 32767).astype(dtype='int16')
-        #self.sdm_signal = convert_audio_to_sdm(self.audio_data, self.sample_rate, self.target_rate)
-        print(f"sdm_signal:, len: {len(self.sdm_signal)}")
-        with open("sdm_signal_from_model_class_gen.txt", "w") as file:
-            for val in self.sdm_signal:
-                file.write(f"{val}\n")
-
-def wrapp_trans(SDM_transaction):
-    with open("sdm_signal_from_design_mntr.txt", "w") as file:
-        SDM_transaction.data.reverse()
-        for val in SDM_transaction.data:
-            file.write(f"{val}\n")
-            #print(f"[Monitor] val: {val}")
 
 @cocotb.test()
 async def functionality(top):
@@ -188,11 +159,7 @@ async def functionality(top):
     sdm_signal_from_design = []    
     
     model = SDM_model_wrapper()
-    
-    #print(f"model_data: {model.sdm_signal}")
 
-    #test = SDM_transaction(model.audio_data, valid=1)
-    #print(test)
     cocotb.start_soon(Clock(top.clk, 354.6, units='ns').start())
     cocotb.start_soon(Clock(top.dummy_clk, 22675.73, units='ns').start())
 
@@ -200,7 +167,7 @@ async def functionality(top):
     drv = SDM_driver(top.dummy_clk, top.audio_in1, top.valid_in_dac1)
     mon = SDM_monitor(top.clk, "mon", top.sdm_out1, top.valid_out_dac1, num_of_probes=len(model.sdm_signal), callback=None)
     scb = SDM_scoreboard(top, fail_immediately=False)
-    scb.add_interface(mon, model.sdm_signal, reorder_depth=0)
+    scb.add_interface(mon, [model.sdm_signal], reorder_depth=0)
 
     await rst_drv.send(500)
     await drv.send(model.audio_data)

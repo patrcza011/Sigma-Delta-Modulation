@@ -9,6 +9,9 @@ PYTHON_MODELS_DIR := ../model
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
 
+COCOTB_HDL_TIMEUNIT=1us
+COCOTB_HDL_TIMEPRECISION=1us
+
 VERILOG_SOURCES += $(PWD)/$(DESIGN_DIR)/sdm_modulator.sv
 VERILOG_SOURCES += $(PWD)/$(DESIGN_DIR)/filter.sv
 VERILOG_SOURCES += $(PWD)/$(DESIGN_DIR)/sdm_demodulator.sv
