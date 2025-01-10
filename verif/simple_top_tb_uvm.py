@@ -99,11 +99,14 @@ class SDM_sinus_sequence(uvm_sequence):
     async def body(self):
         model = SDM_model_wrapper()
         self.audio_data = model.generate_audio_data()
-        for audio_chunk in self.audio_data:
+        for idx, audio_chunk in enumerate(self.audio_data):
+            print(f"SDM_SINUS_SEQUENCE | Iteration {idx}, Data: {audio_chunk}")
             sdm_transaction = SDM_seq_item("sdm_transaction", audio_chunk, 1)
             await self.start_item(sdm_transaction)
-            print(f"SDM_BASE_SEQUENCE | CREATED ITEM: {str(sdm_transaction)}")
+            print(f"SDM_SINUS_SEQUENCE | STARTED ITEM: {sdm_transaction}")
             await self.finish_item(sdm_transaction)
+            print(f"SDM_SINUS_SEQUENCE | FINISHED ITEM: {sdm_transaction}")
+
 
 # Driver
 class SDM_driver(uvm_driver):
@@ -126,9 +129,10 @@ class SDM_driver(uvm_driver):
         print(f"SDM_DRIVER | RUN_PHASE")
         while True:
             print(f"SDM_DRIVER | BEFORE WAIT FOR DUMMY_CLK")
-            #await cocotb.triggers.RisingEdge(self.clk)
+            await RisingEdge(self.clk)
+            print("SDM_DRIVER | RisingEdge detected")
             print(f"SDM_DRIVER | AFTER WAIT FOR DUMMY_CLK")
-            tx_transaction_item = await self.seq_item_port.get_next_item()
+            tx_transaction_item = self.seq_item_port.get_next_item()
             print(f"SDM_DRIVER | AFTER WAIT FOR self.seq_item_port.get_next_item")
             # Drive signals to DUT
             self.valid.value = int(tx_transaction_item.valid)
@@ -152,10 +156,10 @@ class SDM_monitor(uvm_component):
     async def run_phase(self):
         print(f"SDM_MONITOR | RUN_PHASE")
         while True:
-            rx_transaction_item = SDM_seq_item ("rx_transaction", None, None)
-            rx_transaction_item.data = self.data_out.value
-            rx_transaction_item.valid = self.valid
-            self.ap.write(rx_transaction_item)
+            if self.valid.value:
+                rx_transaction_item = SDM_seq_item ("rx_transaction", int(self.data_out.value), int(self.valid.value))
+                print(f"SDM_MONITOR | Captured transaction: {rx_transaction_item}")
+                self.ap.write(rx_transaction_item)
 
 # Scoreboard
 class SDM_scoreboard(uvm_component):
@@ -227,11 +231,17 @@ class SDM_scoreboard(uvm_component):
 class SDM_env(uvm_env):
     def build_phase(self):
         self.seqr = uvm_sequencer("seqr", self)
+
         dummy_clk_ = cocotb.top.dummy_clk
         cocotb.start_soon(Clock(dummy_clk_, 22675.73, units='ns').start())
+
         self.driver = SDM_driver(dummy_clk_, "driver", self)
         self.monitor = SDM_monitor("monitor", self)
         self.scoreboard = SDM_scoreboard("scoreboard", self)
+
+        #cocotb.top.rst_n.value = 0
+        #await Timer(500, units='ns')
+        #cocotb.top.rst_n.value = 1
 
     def connect_phase(self):
         self.driver.seq_item_port.connect(self.seqr.seq_item_export)
@@ -242,12 +252,22 @@ class SDM_env(uvm_env):
 @test()
 class SDM_base_test(uvm_test):
     def build_phase(self):
+        print(f"Top-level DUT signals: {dir(cocotb.top)}")
+        print(f"SDM_BASE_TEST | BUILD_PHASE")
         self.env = SDM_env("env", self)
         self.seq = SDM_sinus_sequence.create("sin_stimulus")
 
     async def run_phase(self):
         await self.raise_objection()
-        dummy_clk = cocotb.top.dummy_clk
-        cocotb.start_soon(Clock(dummy_clk, 22675.73, units='ns').start())
+        print("SDM_BASE_TEST | Clock started")
+        #dummy_clk = cocotb.top.dummy_clk
+        #cocotb.start_soon(Clock(dummy_clk, 22675.73, units='ns').start())
+        cocotb.top.rst_n.value = 0
+        await Timer(500, units='ns')
+        cocotb.top.rst_n.value = 1
+
+        print("SDM_BASE_TEST | Starting sequence...")
+        await self.seq.start(self.env.seqr)
+        print("SDM_BASE_TEST | Sequence completed.")
         # Sequence or stimulus generation
         self.drop_objection()
