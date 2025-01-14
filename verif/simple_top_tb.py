@@ -25,7 +25,7 @@ if parent_path not in sys.path:
 from model.SDM import convert_audio_to_sdm, sigma_delta_demodulator_fir
 # Misc
 sys.setrecursionlimit(10000000)
-# TODO: SIGMA DELtA DRUGIEgo RZEDU 
+# TODO: SIGMA DELtA DRUGIEgo RZEDU
 
 class SDM_transaction:
     def __init__(self, data=[], valid=0):
@@ -41,7 +41,7 @@ class SDM_driver(Driver):
         self.clk = clk
         self.data_in = data_in
         self.valid_in = valid_in
-    
+
     async def _driver_send(self, sdm_transaction, sync=False):
         self.valid_in.value = 1#sdm_transaction.valid
         for val in sdm_transaction:
@@ -54,7 +54,7 @@ class SDM_reset_driver(Driver):
         super().__init__()
         self.clk = clk
         self.reset_in = reset_in
-    
+
     async def _driver_send(self, duration, sync=False):
         self.reset_in.value = 0
         await Timer(duration, units='ns')
@@ -88,7 +88,7 @@ class SDM_scoreboard(Scoreboard):
         super().__init__(dut, reorder_depth, fail_immediately)
         self.val_got = []
         self.val_exp = []
-    
+
     def compare(self, got, exp, log, strict_type=False):
         self.val_got = got
         self.val_exp = exp
@@ -99,11 +99,11 @@ class SDM_scoreboard(Scoreboard):
         return True
 
     def report(self, input_data):
-        self.log.debug(f"Len got: {len(self.val_got)}, got: {self.val_got}, type: {type(self.val_got)}; Len exp: {len(self.val_exp)}, exp: {self.val_exp}, type: {type(self.val_exp)}")
+        print(f"Len got: {len(self.val_got)}, got: {self.val_got}, type: {type(self.val_got)}; Len exp: {len(self.val_exp)}, exp: {self.val_exp}, type: {type(self.val_exp)}")
         num_of_elements = np.arange(len(self.val_got))
         num_of_elements_input = np.arange(len(input_data))
         int_input = list(map(int, input_data))
-        
+
         num_of_elements_avg = np.arange(len(self.averaged_got))
 
 
@@ -123,7 +123,7 @@ class SDM_scoreboard(Scoreboard):
         axs[1, 2].plot(num_of_elements_avg, self.averaged_exp, color='b', label='model', alpha=0.7, linestyle='-')
         axs[1, 2].set_title('avg filtered model')
         plt.show()
-        
+
 
 class SDM_model_wrapper():
     def __init__(self, periods=2, samples_per_period=20, target_rate=2822400, frequency=1):
@@ -136,19 +136,19 @@ class SDM_model_wrapper():
     def generate_data(self):
         # Calculate the duration for periods
         self.duration = self.periods / self.frequency
-        
+
         # Total number of samples
         self.total_samples = self.periods * self.samples_per_period
-        
+
         # Time array with 5 samples per period
         self.time = np.linspace(0, self.duration, int(self.total_samples), endpoint=False)
-        self.log.debug(f"time: {self.time}, len: {len(self.time)}")
-        
+        print(f"time: {self.time}, len: {len(self.time)}")
+
         # Generate sine wave with the desired properties
         #self.audio_data = (0.9 * np.sin(2 * np.pi * self.frequency * self.time) * 32767).astype(dtype='int16')
-        
+
         self.audio_data = (0.5 * np.sin(2 * np.pi * self.frequency * self.time) * 32767).astype(dtype='int16')
-        self.log.debug(f"audio_data: {self.audio_data}, len: {len(self.audio_data)}")
+        print(f"audio_data: {self.audio_data}, len: {len(self.audio_data)}")
         # Convert to SDM signal
         self.sdm_signal = convert_audio_to_sdm(self.audio_data, self.total_samples, self.target_rate)
 
@@ -156,8 +156,8 @@ class SDM_model_wrapper():
 async def functionality(top):
     duration = 1.0  # 1 second
     duration2 = 0.1
-    sdm_signal_from_design = []    
-    
+    sdm_signal_from_design = []
+
     model = SDM_model_wrapper()
 
     cocotb.start_soon(Clock(top.clk, 354.6, units='ns').start())
