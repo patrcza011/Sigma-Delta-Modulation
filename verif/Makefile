@@ -1,5 +1,4 @@
 # Makefile
-
 # We assume that everything is run from the verif dir
 
 DESIGN_DIR := ../hdl
@@ -22,7 +21,7 @@ VERILOG_SOURCES += $(PWD)/$(DESIGN_DIR)/top.sv
 TOPLEVEL = top
 
 # MODULE is the basename of the Python test file
-MODULE = simple_top_tb
+MODULE = simple_top_tb_uvm
 
 # include cocotb's make rules to take care of the simulator setup
 include $(shell cocotb-config --makefiles)/Makefile.sim

@@ -61,6 +61,7 @@ class SDM_model_wrapper():
         return self.audio_data
 
     def generate_data(self, audio_data):
+        audio_data = [x[1].data for x in audio_data]
         print(f"audio_data: {audio_data}, len: {len(audio_data)}")
         # Convert to SDM signal
         self.sdm_signal = convert_audio_to_sdm(audio_data, self.total_samples, self.target_rate)
@@ -97,6 +98,7 @@ class SDM_sinus_sequence(uvm_sequence):
         super().__init__(name)
 
     async def body(self):
+        print(f"SDM_SINUS_SEQUENCE | body()")
         model = SDM_model_wrapper()
         self.audio_data = model.generate_audio_data()
         for idx, audio_chunk in enumerate(self.audio_data):
@@ -118,8 +120,8 @@ class SDM_driver(uvm_driver):
         print(f"SDM_DRIVER | CONNECT_PHASE")
         self.valid = cocotb.top.valid_in_dac1
         self.data_in = cocotb.top.audio_in1
-        #self.clk = cocotb.top.dummy_clk
         self.clk = cocotb.top.dummy_clk
+        #self.clk = cocotb.top.clk
 
     def build_phase(self):
         print(f"SDM_DRIVER | BUILD_PHASE")
@@ -132,8 +134,9 @@ class SDM_driver(uvm_driver):
             await RisingEdge(self.clk)
             print("SDM_DRIVER | RisingEdge detected")
             print(f"SDM_DRIVER | AFTER WAIT FOR DUMMY_CLK")
-            tx_transaction_item = self.seq_item_port.get_next_item()
+            tx_transaction_item = await self.seq_item_port.get_next_item()
             print(f"SDM_DRIVER | AFTER WAIT FOR self.seq_item_port.get_next_item")
+            print(f"SDM_DRIVER | tx_transaction_item: {tx_transaction_item}")
             # Drive signals to DUT
             self.valid.value = int(tx_transaction_item.valid)
             self.data_in.value = int(tx_transaction_item.data)
@@ -156,6 +159,7 @@ class SDM_monitor(uvm_component):
     async def run_phase(self):
         print(f"SDM_MONITOR | RUN_PHASE")
         while True:
+            await RisingEdge(self.clk)
             if self.valid.value:
                 rx_transaction_item = SDM_seq_item ("rx_transaction", int(self.data_out.value), int(self.valid.value))
                 print(f"SDM_MONITOR | Captured transaction: {rx_transaction_item}")
@@ -177,7 +181,7 @@ class SDM_scoreboard(uvm_component):
     def connect_phase(self):
         print(f"SDM_SCOREBOARD | CONNECT_PHASE")
         self.rx_get_port.connect(self.rx_fifo.get_export)
-        self.tx_get_port.connect(self.rx_fifo.get_export)
+        self.tx_get_port.connect(self.tx_fifo.get_export)
 
     def check_phase(self):
         print(f"SDM_SCOREBOARD | CHECK_PHASE")
@@ -188,12 +192,20 @@ class SDM_scoreboard(uvm_component):
             self.received_audio_data.append(self.tx_get_port.try_get())
         model = SDM_model_wrapper()
         model_data = model.generate_data(self.received_audio_data)
+        #print(f"Model: {model.sdm_signal}")
         self.compare(self.received_sdm_data, model.sdm_signal)
         self.report(self.received_audio_data)
 
-    def compare(self, got, exp, log, strict_type=False):
-        self.val_got = got
+    def compare(self, got, exp):
+        self.val_got = [x[1].data for x in got[:len(exp)]]
         self.val_exp = exp
+        print(f"len val_exp: {len(self.val_exp)}, len val_got: {len(self.val_got)}")
+        #print(f"val_exp: {self.val_exp}, exp: {exp}")
+        #for x in self.val_got:
+        #
+        #    print(f"x: {x}, x[0]: {x[0]}, x[1]: {x[1].data}")
+        #print(f"SDM_SCOREBOARD | COMPARE | val_got: {self.val_got}, type(val_got): {type(self.val_got)}")
+        #print(f"SDM_SCOREBOARD | COMPARE | val_exp: {self.val_exp}, type(val_exp): {type(self.val_exp)}")
         self.averaged_got = np.convolve(self.val_got, np.ones(256)/256, mode='valid') * 2 - 1
         self.averaged_exp = np.convolve(self.val_exp, np.ones(256)/256, mode='valid') * 2 - 1
         if np.average(np.abs(self.averaged_exp - self.averaged_got)) >= 0.1:
@@ -201,9 +213,11 @@ class SDM_scoreboard(uvm_component):
         return True
 
     def report(self, input_data):
+        input_data = [x[1].data for x in input_data]
         print(f"Len got: {len(self.val_got)}, got: {self.val_got}, type: {type(self.val_got)}; Len exp: {len(self.val_exp)}, exp: {self.val_exp}, type: {type(self.val_exp)}")
         num_of_elements = np.arange(len(self.val_got))
         num_of_elements_input = np.arange(len(input_data))
+        #int_input = [int(x[1].data) for x in input_data]
         int_input = list(map(int, input_data))
 
         num_of_elements_avg = np.arange(len(self.averaged_got))
@@ -229,13 +243,14 @@ class SDM_scoreboard(uvm_component):
 
 # Environment
 class SDM_env(uvm_env):
+    #def __init__():
     def build_phase(self):
         self.seqr = uvm_sequencer("seqr", self)
 
-        dummy_clk_ = cocotb.top.dummy_clk
-        cocotb.start_soon(Clock(dummy_clk_, 22675.73, units='ns').start())
+        self.dummy_clk_ = cocotb.top.dummy_clk
+        self.clk = cocotb.top.clk
 
-        self.driver = SDM_driver(dummy_clk_, "driver", self)
+        self.driver = SDM_driver(self.dummy_clk_, "driver", self)
         self.monitor = SDM_monitor("monitor", self)
         self.scoreboard = SDM_scoreboard("scoreboard", self)
 
@@ -249,19 +264,21 @@ class SDM_env(uvm_env):
         self.driver.ap.connect(self.scoreboard.tx_export)
 
 # Test
-@test()
 class SDM_base_test(uvm_test):
     def build_phase(self):
-        print(f"Top-level DUT signals: {dir(cocotb.top)}")
+        #print(f"Top-level DUT signals: {dir(cocotb.top)}")
         print(f"SDM_BASE_TEST | BUILD_PHASE")
         self.env = SDM_env("env", self)
         self.seq = SDM_sinus_sequence.create("sin_stimulus")
 
     async def run_phase(self):
-        await self.raise_objection()
+        self.raise_objection()
         print("SDM_BASE_TEST | Clock started")
         #dummy_clk = cocotb.top.dummy_clk
         #cocotb.start_soon(Clock(dummy_clk, 22675.73, units='ns').start())
+        cocotb.start_soon(Clock(self.env.dummy_clk_, 22675.73, units='ns').start())
+        cocotb.start_soon(Clock(self.env.clk, 354.6, units='ns').start())
+        #cocotb.start_soon(Clock(self.env))
         cocotb.top.rst_n.value = 0
         await Timer(500, units='ns')
         cocotb.top.rst_n.value = 1
@@ -270,4 +287,9 @@ class SDM_base_test(uvm_test):
         await self.seq.start(self.env.seqr)
         print("SDM_BASE_TEST | Sequence completed.")
         # Sequence or stimulus generation
+        await Timer(25000, units='ns')
         self.drop_objection()
+
+@cocotb.test()
+async def func(top):
+    await uvm_root().run_test("SDM_base_test")
