@@ -1,65 +1,59 @@
-
-module top (
+module top #(
+    parameter int DAC_ORDER = 2  // 1 for first-order, 2 for second-order
+) (
     input  logic              		clk,
-    input logic dummy_clk,
     input  logic              		rst_n,
-    input  logic              		valid_in_dac1,  //Audio to SDM
-	input  logic              		valid_in_dac2,  //Audio to SDM
-    input  logic signed [15 : 0]    audio_in1,      //Audio to SDM
-	input  logic signed [15 : 0]    audio_in2,      //Audio to SDM
-	input  logic              		valid_in_adc1,  //SDM to Audio
-	input  logic              		valid_in_adc2,  //SDM to Audio
-    input  logic 						   sdm_in1,	//SDM to Audio
-	input  logic 						   sdm_in2,	//SDM to Audio
-    output logic              		valid_out_dac1,
-	output logic              		valid_out_dac2,
-    output logic              		sdm_out1,
-	output logic              		sdm_out2,
-	output logic              		valid_out_adc1,
-	output logic              		valid_out_adc2,
-    output logic signed [15 : 0]    audio_out1,
-	output logic signed [15 : 0]    audio_out2
+    input  logic              		valid_in_dac,   // Audio to SDM  
+    input  logic signed [15 : 0]    audio_in,       // Audio to SDM 
+    input  logic              		valid_in_adc,   // SDM to Audio
+    input  logic              		sdm_in,         // SDM to Audio
+    output logic              		valid_out_dac,  
+    output logic              		sdm_out,
+    output logic              		valid_out_adc,    
+    output logic signed [15 : 0]    audio_out
 );
 
-    sdm_modulator dac1 (
-        .clk(clk),
-        .rst_n(rst_n),
-        .valid_in(valid_in_dac1),
-        .din(audio_in1),
-        .valid_out(valid_out_dac1),
-        .dout(sdm_out1)
-    );
+  // Internally route DAC outputs so that only the selected DAC drives them.
+  // This avoids having both modules drive the same signals at once.
+  logic valid_out_dac_int;
+  logic sdm_out_int;
 
-	sdm_modulator dac2 (
-        .clk(clk),
-        .rst_n(rst_n),
-        .valid_in(valid_in_dac2),
-        .din(audio_in2),
-        .valid_out(valid_out_dac2),
-        .dout(sdm_out2)
-    );
+  // Generate block to choose which DAC is instantiated
+  generate
+    if (DAC_ORDER == 1) begin : GEN_DAC_1ST
+      sdm_dac_1st dac_1st_order (
+          .clk       (clk),
+          .rst_n     (rst_n),
+          .valid_in  (valid_in_dac),
+          .din       (audio_in),
+          .valid_out (valid_out_dac_int),
+          .dout      (sdm_out_int)
+      );
+    end
+    else if (DAC_ORDER == 2) begin : GEN_DAC_2ND
+      sdm_dac_2nd dac_2nd_order (
+          .clk       (clk),
+          .rst_n     (rst_n),
+          .valid_in  (valid_in_dac),
+          .din       (audio_in),
+          .valid_out (valid_out_dac_int),
+          .dout      (sdm_out_int)
+      );
+    end
+  endgenerate
 
-	sdm_demodulator adc1 (
-        .clk(clk),
-        .rst_n(rst_n),
-        .valid_in(valid_in_adc1),
-        .din(sdm_in1),
-        .valid_out(valid_out_adc1),
-        .dout(audio_out1)
-    );
+  // Connect the internal signals to the module outputs
+  assign valid_out_dac = valid_out_dac_int;
+  assign sdm_out       = sdm_out_int;
 
-	sdm_demodulator adc2 (
-        .clk(clk),
-        .rst_n(rst_n),
-        .valid_in(valid_in_adc2),
-        .din(sdm_in2),
-        .valid_out(valid_out_adc2),
-        .dout(audio_out2)
-    );
-
-initial begin
-    $dumpfile("top.vcd");
-    $dumpvars(1, top);
-end
+  // ADC is always instantiated (independent of DAC_ORDER)
+  sdm_adc adc (
+      .clk       (clk),
+      .rst_n     (rst_n),
+      .valid_in  (valid_in_adc),
+      .din       (sdm_in),
+      .valid_out (valid_out_adc),
+      .dout      (audio_out)
+  );
 
 endmodule
