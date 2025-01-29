@@ -165,8 +165,8 @@ async def functionality(top):
     cocotb.start_soon(Clock(top.dummy_clk, 22675.73, units='ns').start())
 
     rst_drv = SDM_reset_driver(top.clk, top.rst_n)
-    drv = SDM_driver(top.dummy_clk, top.audio_in1, top.valid_in_dac1)
-    mon = SDM_monitor(top.clk, "mon", top.sdm_out1, top.valid_out_dac1, num_of_probes=len(model.sdm_signal), callback=None)
+    drv = SDM_driver(top.dummy_clk, top.audio_in, top.valid_in_dac)
+    mon = SDM_monitor(top.clk, "mon", top.sdm_out, top.valid_out_dac, num_of_probes=len(model.sdm_signal), callback=None)
     scb = SDM_scoreboard(top, fail_immediately=False)
     scb.add_interface(mon, [model.sdm_signal], reorder_depth=0)
 

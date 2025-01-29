@@ -1,18 +1,27 @@
+`ifndef ORDER `define ORDER 5
+`endif
+
 module top #(
-    parameter int DAC_ORDER = 2  // 1 for first-order, 2 for second-order
+    parameter int DAC_ORDER = `ORDER  // 1 for first-order, 2 for second-order
 ) (
     input  logic              		clk,
+    input  logic                  dummy_clk,
     input  logic              		rst_n,
-    input  logic              		valid_in_dac,   // Audio to SDM  
-    input  logic signed [15 : 0]    audio_in,       // Audio to SDM 
+    input  logic              		valid_in_dac,   // Audio to SDM
+    input  logic signed [15 : 0]    audio_in,       // Audio to SDM
     input  logic              		valid_in_adc,   // SDM to Audio
     input  logic              		sdm_in,         // SDM to Audio
-    output logic              		valid_out_dac,  
+    output logic              		valid_out_dac,
     output logic              		sdm_out,
-    output logic              		valid_out_adc,    
+    output logic              		valid_out_adc,
     output logic signed [15 : 0]    audio_out
 );
-
+int fd;
+  initial begin
+    fd = $fopen ("./note.txt", "w");
+      $fdisplay(fd,"DAC_ORDER: %d | `ORDER: %d", DAC_ORDER, `ORDER);
+    $fclose(fd);
+  end
   // Internally route DAC outputs so that only the selected DAC drives them.
   // This avoids having both modules drive the same signals at once.
   logic valid_out_dac_int;

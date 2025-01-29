@@ -118,8 +118,8 @@ class SDM_driver(uvm_driver):
 
     def connect_phase(self):
         print(f"SDM_DRIVER | CONNECT_PHASE")
-        self.valid = cocotb.top.valid_in_dac1
-        self.data_in = cocotb.top.audio_in1
+        self.valid = cocotb.top.valid_in_dac
+        self.data_in = cocotb.top.audio_in
         self.clk = cocotb.top.dummy_clk
         #self.clk = cocotb.top.clk
 
@@ -151,8 +151,8 @@ class SDM_monitor(uvm_component):
 
     def connect_phase(self):
         print(f"SDM_MONITOR | CONNECT_PHASE")
-        self.data_out = cocotb.top.sdm_out1
-        self.valid = cocotb.top.valid_out_dac1
+        self.data_out = cocotb.top.sdm_out
+        self.valid = cocotb.top.valid_out_dac
         self.clk = cocotb.top.clk
 
 
