@@ -38,7 +38,40 @@ def sigma_delta_modulator(input_signal, index=0, integrator=0, output_signal=Non
     output_signal.append(quantizer)
     return sigma_delta_modulator(input_signal, index + 1, integrator, output_signal)
 
-def convert_audio_to_sdm(audio_data, sample_rate, target_rate):
+def second_order_sigma_delta_modulator(input_signal, index=0, integrator1=0, integrator2=0, output_signal=None):
+    """
+    Recursive implementation of a second-order Sigma-Delta modulator for 0 and 1 output.
+
+    Args:
+        input_signal (array-like): The input analog signal to be converted.
+        index (int): Current index in the signal.
+        integrator1 (float): Current state of the first integrator.
+        integrator2 (float): Current state of the second integrator.
+        output_signal (list): Accumulated output signal (0 or 1).
+
+    Returns:
+        list: The quantized output signal (0 or 1).
+    """
+    if output_signal is None:
+        output_signal = []
+
+    if index >= len(input_signal):  # Base case
+        return output_signal
+
+    # First integrator: accumulate the difference
+    integrator1 += input_signal[index] - (32768 if integrator2 > 0 else -32768)
+
+    # Second integrator: accumulate the output of the first integrator
+    integrator2 += integrator1
+
+    # Quantizer: outputs 0 or 1 based on the second integrator
+    quantizer = 1 if integrator2 > 0 else 0
+
+    # Append the quantized value to the output
+    output_signal.append(quantizer)
+    return second_order_sigma_delta_modulator(input_signal, index + 1, integrator1, integrator2, output_signal)
+
+def convert_audio_to_sdm(audio_data, sample_rate, target_rate, order=1):
     """
     Converts 16-bit audio data at 44.1 kHz to Sigma-Delta modulated signal at 2.8224 MHz.
 
@@ -46,6 +79,7 @@ def convert_audio_to_sdm(audio_data, sample_rate, target_rate):
         audio_data (array-like): The input 16-bit audio signal.
         sample_rate (int): Original sample rate of the audio (44.1 kHz).
         target_rate (int): Target sample rate (2.8224 MHz).
+        order (int): Order of the sigma delta modulator, available order=1 or order=2
 
     Returns:
         array: Sigma-Delta modulated signal (0 or 1) at target rate.
@@ -67,8 +101,8 @@ def convert_audio_to_sdm(audio_data, sample_rate, target_rate):
     #oversampled_audio = resample(audio_data, len(audio_data) * oversampling_factor)
 
     # Apply Sigma-Delta Modulation
-    sdm_signal = sigma_delta_modulator(oversampled_audio)
-    
+    sdm_signal = sigma_delta_modulator(oversampled_audio) if order != 2 else second_order_sigma_delta_modulator(oversampled_audio)
+
     # Decimate the SDM signal to reduce the number of samples
     #decimation_factor = 64
     #decimated_sdm_signal = sdm_signal[::decimation_factor]
@@ -119,7 +153,7 @@ if __name__ == "__main__":
     #audio_data = (0.9 * np.sin(2 * np.pi * frequency * t) * 32767).astype(np.int16)
     #print("Audio_data len: ", len(audio_data))
     # Convert the audio to Sigma-Delta Modulated Signal
-    
+
     # TEMP #############
 
     periods=5
@@ -129,21 +163,21 @@ if __name__ == "__main__":
 
     # Calculate the duration for 5 periods
     duration = periods / frequency
-    
+
     # Total number of samples
     total_samples = periods * samples_per_period
-    
+
     # Time array with 5 samples per period
     t = np.linspace(0, duration, int(total_samples), endpoint=False)
     print(f"t: {t}, len: {len(t)}")
-    
+
     # Generate sine wave with the desired properties
     audio_data = (0.9 * np.sin(2 * np.pi * frequency * t) * 32767).astype(dtype='int16')
     print(f"audio_data: {audio_data}, len: {len(audio_data)}")
     # Convert to SDM signal
     sdm_signal = convert_audio_to_sdm(audio_data, total_samples, target_rate)
-    
-    
+
+
     #sdm_signal = convert_audio_to_sdm(audio_data, sample_rate, target_rate)
 
     #demodulated_audio_fir = sigma_delta_demodulator_fir(sdm_signal, target_rate, sample_rate)
@@ -177,4 +211,3 @@ if __name__ == "__main__":
     # Adjust layout
     plt.tight_layout()
     plt.show()
-

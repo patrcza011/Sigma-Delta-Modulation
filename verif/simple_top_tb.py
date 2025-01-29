@@ -126,11 +126,12 @@ class SDM_scoreboard(Scoreboard):
 
 
 class SDM_model_wrapper():
-    def __init__(self, periods=2, samples_per_period=20, target_rate=2822400, frequency=1):
+    def __init__(self, periods=2, samples_per_period=20, target_rate=2822400, frequency=1, order=1):
         self.periods = periods
         self.samples_per_period = samples_per_period
         self.frequency = frequency
         self.target_rate = target_rate
+        self.order = order
         self.generate_data()
 
     def generate_data(self):
@@ -150,7 +151,7 @@ class SDM_model_wrapper():
         self.audio_data = (0.5 * np.sin(2 * np.pi * self.frequency * self.time) * 32767).astype(dtype='int16')
         print(f"audio_data: {self.audio_data}, len: {len(self.audio_data)}")
         # Convert to SDM signal
-        self.sdm_signal = convert_audio_to_sdm(self.audio_data, self.total_samples, self.target_rate)
+        self.sdm_signal = convert_audio_to_sdm(self.audio_data, self.total_samples, self.target_rate, self.order)
 
 @cocotb.test()
 async def functionality(top):
@@ -158,7 +159,7 @@ async def functionality(top):
     duration2 = 0.1
     sdm_signal_from_design = []
 
-    model = SDM_model_wrapper()
+    model = SDM_model_wrapper(order=2)
 
     cocotb.start_soon(Clock(top.clk, 354.6, units='ns').start())
     cocotb.start_soon(Clock(top.dummy_clk, 22675.73, units='ns').start())
