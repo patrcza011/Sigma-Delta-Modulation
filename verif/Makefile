@@ -5,6 +5,8 @@ DESIGN_DIR := ../hdl
 VERIF_DIR := ../verif
 PYTHON_MODELS_DIR := ../model
 FILTERS_DIR := ../filters
+PYCACHE_DIR := $(VERIF_DIR)/__pycache__
+SIM_BUILD_DIR := $(VERIF_DIR)/sim_build
 # defaults
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
@@ -28,7 +30,15 @@ TOPLEVEL = top
 MODULE = simple_top_tb
 
 # Append the define parameter to SIM_ARGS
-COMPILE_ARGS += -DORDER=$(ORDERA)
-
+COMPILE_ARGS += -DORDER=$(ORDER)
+.PHONY: clean_dirs
+clean_dirs:
+ifneq ($(wildcard $(PYCACHE_DIR)),)
+	rm -r $(PYCACHE_DIR)
+endif
+ifneq ($(wildcard $(SIM_BUILD_DIR)),)
+#$(error "Directory $(SIM_BUILD_DIR) does not exist")
+	rm -r $(SIM_BUILD_DIR)
+endif
 # include cocotb's make rules to take care of the simulator setup
 include $(shell cocotb-config --makefiles)/Makefile.sim

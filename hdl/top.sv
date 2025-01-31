@@ -1,16 +1,19 @@
+`ifndef ORDER
+`define ORDER 1
+`endif
 module top #(
     parameter int DAC_ORDER = 1,  // 1 for first-order, 2 for second-order
     parameter int ADC_TYPE  = 1   // 0 for adc_avg, 1 for adc_art
 ) (
     input  logic              		clk,
     input  logic              		rst_n,
-    input  logic              		valid_in_dac,   // Audio to SDM  
-    input  logic signed [15 : 0]    audio_in,       // Audio to SDM 
+    input  logic              		valid_in_dac,   // Audio to SDM
+    input  logic signed [15 : 0]    audio_in,       // Audio to SDM
     input  logic              		valid_in_adc,   // SDM to Audio
     input  logic              		sdm_in,         // SDM to Audio
-    output logic              		valid_out_dac,  
+    output logic              		valid_out_dac,
     output logic              		sdm_out,
-    output logic              		valid_out_adc,    
+    output logic              		valid_out_adc,
     output logic signed [15 : 0]    audio_out
 );
 
