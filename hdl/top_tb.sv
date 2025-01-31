@@ -1,12 +1,11 @@
-`timescale 1fs / 1fs
+`timescale 1ns / 1ps
 
 module top_tb;
 
-
     // Clock and sample rate parameters
-    localparam real CLK_PERIOD   = 22694.4; // Clock period in ns
-    localparam int  SAMPLE_RATE  = 44100;   // 44.1 kHz sampling rate
-    localparam real SAMPLE_PERIOD= 1_000_000_000 / SAMPLE_RATE; // in ns
+    localparam CLK_PERIOD   = 22694.4; // Clock period in ns
+    localparam SAMPLE_RATE  = 44100;   // 44.1 kHz sampling rate
+    localparam SAMPLE_PERIOD= 1_000_000_000 / SAMPLE_RATE; // in ns
 
     //----------------------------------------------------------------------
     // Testbench Signals
@@ -48,6 +47,14 @@ module top_tb;
     initial begin
         clk = 0;
         forever #(CLK_PERIOD / 2) clk = ~clk;
+    end
+
+    //----------------------------------------------------------------------
+    // Dump waveform data to a file
+    //----------------------------------------------------------------------
+    initial begin
+        $dumpfile("top_tb.vcd");  // Specify the name of the VCD file
+        $dumpvars(0, top_tb);     // Dump all signals in the testbench
     end
 
     //----------------------------------------------------------------------

@@ -1,4 +1,4 @@
-module sdm_adc (
+module sdm_adc_avg (
     input  logic              clk,
     input  logic              rst_n,
     input  logic              valid_in,   // New valid input signal
