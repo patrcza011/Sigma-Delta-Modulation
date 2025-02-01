@@ -14,7 +14,7 @@ module fir_decimator #(
 );
 
     // Define the filter coefficients (low-pass anti-aliasing filter)
-    localparam logic signed [COEFF_WIDTH-1:0] coeff [TAPS] = '{
+    logic signed [COEFF_WIDTH-1:0] coeff [TAPS] = '{
          -16'sd119, 16'sd197, 16'sd692, 16'sd0,
          -16'sd2613, -16'sd2855, 16'sd5177, 16'sd18681,
          16'sd25580, 16'sd18681, 16'sd5177, -16'sd2855,
