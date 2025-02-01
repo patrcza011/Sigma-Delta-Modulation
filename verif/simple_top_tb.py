@@ -172,12 +172,7 @@ def parse_plusargs():
 
 @cocotb.test()
 async def functionality(top):
-    duration = 1.0  # 1 second
-    duration2 = 0.1
-    sdm_signal_from_design = []
     order_from_terminal, adc_type_from_terminal = parse_plusargs()
-    print(order_from_terminal, adc_type_from_terminal)
-    return
     model = SDM_model_wrapper(order=order_from_terminal)
 
 
