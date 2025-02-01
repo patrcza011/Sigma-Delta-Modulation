@@ -25,7 +25,6 @@ if parent_path not in sys.path:
 from model.SDM import convert_audio_to_sdm, sigma_delta_demodulator_fir
 # Misc
 sys.setrecursionlimit(10000000)
-# TODO: SIGMA DELtA DRUGIEgo RZEDU
 
 class SDM_transaction:
     def __init__(self, data=[], valid=0):
@@ -153,13 +152,34 @@ class SDM_model_wrapper():
         # Convert to SDM signal
         self.sdm_signal = convert_audio_to_sdm(self.audio_data, self.total_samples, self.target_rate, self.order)
 
+def parse_plusargs():
+    def validate_field(field):
+        if field > 2:
+            field = 2
+        if field < 1:
+            field = 1
+        return field
+
+    order = 0
+    adc_type = 0
+    if "ORDER" in cocotb.plusargs:
+        order = validate_field(int(cocotb.plusargs["ORDER"]))
+
+    if "ADC_TYPE" in cocotb.plusargs:
+        adc_type = validate_field(int(cocotb.plusargs["ADC_TYPE"]))
+
+    return order, adc_type
+
 @cocotb.test()
 async def functionality(top):
     duration = 1.0  # 1 second
     duration2 = 0.1
     sdm_signal_from_design = []
+    order_from_terminal, adc_type_from_terminal = parse_plusargs()
+    print(order_from_terminal, adc_type_from_terminal)
+    return
+    model = SDM_model_wrapper(order=order_from_terminal)
 
-    model = SDM_model_wrapper(order=2)
 
     cocotb.start_soon(Clock(top.clk, 354.6, units='ns').start())
     cocotb.start_soon(Clock(top.dummy_clk, 22675.73, units='ns').start())

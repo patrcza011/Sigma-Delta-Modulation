@@ -17,6 +17,7 @@ COCOTB_HDL_TIMEPRECISION=1ps
 VERILOG_SOURCES += $(PWD)/$(FILTERS_DIR)/CIC_filter.v
 VERILOG_SOURCES += $(PWD)/$(FILTERS_DIR)/FIR_comb.v
 VERILOG_SOURCES += $(PWD)/$(DESIGN_DIR)/fir_decimator.sv
+VERILOG_SOURCES += $(PWD)/$(DESIGN_DIR)/comb_decimator.sv
 VERILOG_SOURCES += $(PWD)/$(DESIGN_DIR)/sdm_adc_art.sv
 VERILOG_SOURCES += $(PWD)/$(DESIGN_DIR)/sdm_adc_avg.sv
 VERILOG_SOURCES += $(PWD)/$(DESIGN_DIR)/sdm_dac_1st.sv
@@ -27,13 +28,19 @@ VERILOG_SOURCES += $(PWD)/$(DESIGN_DIR)/top.sv
 
 # TOPLEVEL is the name of the toplevel module in your Verilog or VHDL file
 TOPLEVEL = top
-
+ORDER ?= 1
+ADC_TYPE ?= 1
 # MODULE is the basename of the Python test file
+ifneq ($(UVM),1)
 MODULE = simple_top_tb
-
+else
+MODULE = simple_top_tb_uvm
+endif
 # Append the define parameter to SIM_ARGS
 COMPILE_ARGS += -DORDER=$(ORDER)
 COMPILE_ARGS += -DADC_TYPE=$(ADC_TYPE)
+PLUSARGS += +ORDER=$(ORDER)
+PLUSARGS += +ADC_TYPE=$(ADC_TYPE)
 
 .PHONY: clean_dirs
 clean_dirs:

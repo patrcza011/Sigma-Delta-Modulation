@@ -36,11 +36,12 @@ from model.SDM import convert_audio_to_sdm, sigma_delta_demodulator_fir
 sys.setrecursionlimit(10000000)
 
 class SDM_model_wrapper():
-    def __init__(self, periods=2, samples_per_period=20, target_rate=2822400, frequency=1):
+    def __init__(self, periods=2, samples_per_period=20, target_rate=2822400, frequency=1, order=1):
         self.periods = periods
         self.samples_per_period = samples_per_period
         self.frequency = frequency
         self.target_rate = target_rate
+        self.order = order
         self.generate_audio_data()
 
     def generate_audio_data(self):
@@ -64,7 +65,7 @@ class SDM_model_wrapper():
         audio_data = [x[1].data for x in audio_data]
         print(f"audio_data: {audio_data}, len: {len(audio_data)}")
         # Convert to SDM signal
-        self.sdm_signal = convert_audio_to_sdm(audio_data, self.total_samples, self.target_rate)
+        self.sdm_signal = convert_audio_to_sdm(audio_data, self.total_samples, self.target_rate, self.order)
 
 # Sequence item
 class SDM_seq_item(uvm_sequence_item):
@@ -99,7 +100,8 @@ class SDM_sinus_sequence(uvm_sequence):
 
     async def body(self):
         print(f"SDM_SINUS_SEQUENCE | body()")
-        model = SDM_model_wrapper()
+        sdm_order = int(cocotb.plusargs["ORDER"])
+        model = SDM_model_wrapper(order=sdm_order)
         self.audio_data = model.generate_audio_data()
         for idx, audio_chunk in enumerate(self.audio_data):
             print(f"SDM_SINUS_SEQUENCE | Iteration {idx}, Data: {audio_chunk}")
@@ -190,7 +192,9 @@ class SDM_scoreboard(uvm_component):
 
         while self.tx_get_port.can_get():
             self.received_audio_data.append(self.tx_get_port.try_get())
-        model = SDM_model_wrapper()
+
+        sdm_order = int(cocotb.plusargs["ORDER"])
+        model = SDM_model_wrapper(order=sdm_order)
         model_data = model.generate_data(self.received_audio_data)
         #print(f"Model: {model.sdm_signal}")
         self.compare(self.received_sdm_data, model.sdm_signal)
