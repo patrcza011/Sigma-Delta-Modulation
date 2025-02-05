@@ -295,5 +295,5 @@ class SDM_base_test(uvm_test):
         self.drop_objection()
 
 @cocotb.test()
-async def func(top):
+async def functionality(top):
     await uvm_root().run_test("SDM_base_test")
