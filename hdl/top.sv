@@ -23,6 +23,8 @@ module top #(
     output logic signed [15 : 0]    audio_out
 );
 
+  // w zasadzie to nie jest poprawne nazewnictwo - nie ma tu żadnego DAC ani ADC bo nie ma sygnału analogowego. jest sygnał PCM i SDM
+
   // Internally route DAC outputs so that only the selected DAC drives them.
   // This avoids having both modules drive the same signals at once.
   logic valid_out_dac_int;
@@ -61,6 +63,7 @@ module top #(
   assign audio_out     = audio_out_int;
 
   // Generate block to choose which ADC is instantiated
+    // to jest niejasne dlaczego są dwa różne zestawy filtrów i co one właściwie robią - jest to też nieopisane w dokumentacji. A oczekiwałbym np. charakterystyk filtrów i schematu (gdzie decymacja etc.)
   generate
     if (ADC_TYPE == 0) begin : GEN_ADC_AVG
       sdm_adc_avg adc_avg (
