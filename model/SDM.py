@@ -38,6 +38,7 @@ def sigma_delta_modulator(input_signal, index=0, integrator=0, output_signal=Non
     output_signal.append(quantizer)
     return sigma_delta_modulator(input_signal, index + 1, integrator, output_signal)
 
+# minimalnie się różni od poprzedniej funkcji, lepiej zrobić jedną funkcję z dodatkowym parametrem zamiast 2
 def second_order_sigma_delta_modulator(input_signal, index=0, integrator1=0, integrator2=0, output_signal=None):
     """
     Recursive implementation of a second-order Sigma-Delta modulator for 0 and 1 output.
