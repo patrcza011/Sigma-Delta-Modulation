@@ -268,6 +268,7 @@ class SDM_env(uvm_env):
         self.driver.ap.connect(self.scoreboard.tx_export)
 
 # Test
+# test bazowy powinien zawierać kod wspólny dla wszystkich testów. Jest to klasa bazowa dla prawdzowych testów - które już mają kod konkretnej funkcjonalności do przetestowania.
 class SDM_base_test(uvm_test):
     def build_phase(self):
         #print(f"Top-level DUT signals: {dir(cocotb.top)}")
