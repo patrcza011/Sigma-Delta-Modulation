@@ -16,7 +16,8 @@ Oba targety muszą zostać wykonane równolegle
  1 - Testbench z wykorzystaniem pyUVM
 
 ### Test:
-- Oba testbenche uruchamiają tylko jeden test "functionality", którego wynik w postaci tekstowej widoczny jest w terminalu, oraz w postaci graficznej za pomocą wykresów porównujących ze sobą wynik otrzymany z modelu oraz z naszej implementacji sprzętowej
+- Oba testbenche uruchamiają tylko jeden test "functionality", którego wynik w postaci tekstowej widoczny jest w terminalu, oraz w postaci graficznej za pomocą wykresów porównujących ze sobą wynik otrzymany z modelu oraz z naszej implementacji sprzętowej.
+- Wynik testu ustalany jest na podstawie porównania wartości otrzymanych z operacji splotu wartości funkcji uzyskanej z oknem jedynek o szerokości 256 oraz równych wagach, identyczna operacja wykonana jest dla wartości uzyskanych z modelu. Jeżeli średnia ważona z wartości bezwzględnej z różnicy tych funkcji przekroczy 0.1 to wynik testu jest negatywny (Fail)
 
 ### Przykłady użycia:
 ~~~sh
